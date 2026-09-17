@@ -134,6 +134,46 @@ id each backend expects. Details, credentials and caveats: [docs/llm_backends.md
 
 Tasks are **progressively revealed**, not one-shot. The agent gets `instruction.md` as turn 0; a **user simulator** then watches it and replays the original session's follow-ups — clarifications, course-corrections, reviews — so a score reflects the whole interaction. Each cohort runs for multiple replicates.
 
+### Harbor ACP controller proof of concept
+
+`src/run_harbor_acp_poc.py` runs the existing SWE-Together user simulator as
+an external Harbor `user_agent`. The simulator owns the benchmark interaction
+loop and talks to the independently selected coding agent through Harbor's
+persistent ACP bridge.
+
+Point `HARBOR_REPO` at a Harbor checkout containing the generic ACP bridge
+target prototype, then run one task:
+
+```bash
+HARBOR_REPO=../harbor \
+uv run python src/run_harbor_acp_poc.py agent-swarm-task-4a881b \
+  --target-agent acp:opencode \
+  --target-model openai/gpt-5.4
+```
+
+To use local GitHub Copilot credentials for both roles, run OpenCode's ACP
+server with its GitHub Copilot provider and use the authenticated host Copilot
+CLI for the user simulator:
+
+```bash
+COPILOT_GITHUB_TOKEN="$(gh auth token)" \
+GITHUB_TOKEN="$(gh auth token)" \
+NPM_CONFIG_REGISTRY="$(npm config get registry)" \
+HARBOR_REPO=../harbor \
+uv run python src/run_harbor_acp_poc.py agent-swarm-task-4a881b \
+  --target-agent acp:opencode \
+  --target-model github-copilot/gpt-5.4 \
+  --user-model copilot-cli/gpt-5.4
+```
+
+The official Copilot ACP packages currently require an interactive ACP login;
+their `copilot-login`/`github_oauth` handshakes do not accept token-only
+authentication. The OpenCode route preserves the same persistent ACP session
+while remaining non-interactive.
+
+This path is intentionally separate from the canonical benchmark launcher
+while the ACP integration is being validated.
+
 Scoring centers on two axes:
 
 - **Correctness** — an agentic judge decomposes each task into *weighted completeness goals* (frozen per task, so scores are comparable across cohorts) and marks the agent's patch against them, crediting near-misses fairly. Rolled up as `pass@1`, `stable_pass_rate`, and `pass²` at a `judge_score ≥ 0.85` bar.
