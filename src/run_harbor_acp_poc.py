@@ -71,12 +71,10 @@ def _target_kwargs(target_agent: str) -> dict[str, object]:
         return {
             "auth_policy": "explicit",
             "authenticate_method_id": "copilot-login",
-            "bridge_only": True,
         }
     if target_agent.startswith("acp:"):
         return {
             "auth_policy": "disabled",
-            "bridge_only": True,
         }
     return {}
 
